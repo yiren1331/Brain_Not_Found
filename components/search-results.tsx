@@ -56,11 +56,8 @@ export function SearchResults() {
         if (location) {
           filtered = filtered.filter((p) => {
             const searchText = location.toLowerCase()
-            const titleMatch = p.title?.toLowerCase().includes(searchText)
-            const addressMatch = p.address?.toLowerCase().includes(searchText)
-            const descMatch = p.description?.toLowerCase().includes(searchText)
             const locationMatch = p.location?.toLowerCase().includes(searchText)
-            return titleMatch || addressMatch || descMatch || locationMatch
+            return locationMatch
           })
         }
 
