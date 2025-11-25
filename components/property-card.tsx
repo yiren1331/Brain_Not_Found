@@ -10,6 +10,7 @@ import { useLanguage } from "@/contexts/language-context"
 interface PropertyCardProps {
   id: number
   title: string
+  titleMs?: string | null
   location: string
   price: number
   bedrooms: number
@@ -22,6 +23,7 @@ interface PropertyCardProps {
 
 export function PropertyCard({
   title,
+  titleMs,
   location,
   price,
   bedrooms,
@@ -31,7 +33,7 @@ export function PropertyCard({
   contact,
   furnished,
 }: PropertyCardProps) {
-  const { t } = useLanguage()
+  const { t, language } = useLanguage()
 
   const getFurnishedLabel = () => {
     if (furnished === "fully") return t("fullyFurnished")
@@ -39,12 +41,14 @@ export function PropertyCard({
     return t("unfurnished")
   }
 
+  const displayTitle = language === "ms" && titleMs ? titleMs : title
+
   return (
     <Card className="overflow-hidden group hover:shadow-lg transition-shadow duration-300">
       <div className="relative aspect-[4/3] overflow-hidden">
         <Image
           src={image || "/placeholder.svg"}
-          alt={title}
+          alt={displayTitle}
           fill
           className="object-cover group-hover:scale-105 transition-transform duration-300"
         />
@@ -60,7 +64,7 @@ export function PropertyCard({
 
       <CardContent className="p-6">
         <div className="mb-4">
-          <h3 className="text-xl font-semibold mb-2 text-balance">{title}</h3>
+          <h3 className="text-xl font-semibold mb-2 text-balance">{displayTitle}</h3>
           <div className="flex items-center text-muted-foreground text-sm">
             <MapPin className="h-4 w-4 mr-1" />
             {location}
@@ -80,20 +84,24 @@ export function PropertyCard({
               {bathrooms} {t("bath")}
             </span>
           </div>
-          <div className="flex items-center gap-1">
-            <Square className="h-4 w-4" />
-            <span>{area} sqft</span>
-          </div>
+          {area > 0 && (
+            <div className="flex items-center gap-1">
+              <Square className="h-4 w-4" />
+              <span>{area} sqft</span>
+            </div>
+          )}
           <div className="flex items-center gap-1">
             <Sofa className="h-4 w-4" />
             <span>{getFurnishedLabel()}</span>
           </div>
         </div>
 
-        <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-          <Phone className="h-4 w-4" />
-          <span className="font-medium">{contact}</span>
-        </div>
+        {contact && (
+          <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+            <Phone className="h-4 w-4" />
+            <span className="font-medium">{contact}</span>
+          </div>
+        )}
 
         <div className="flex items-center justify-between pt-4 border-t">
           <div>

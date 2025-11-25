@@ -30,10 +30,27 @@ export function AIChatbox() {
   const [inputValue, setInputValue] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (messagesContainerRef.current) {
+      requestAnimationFrame(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+        }
+      })
+    }
   }
+
+  useEffect(() => {
+    const handleError = (e: ErrorEvent) => {
+      if (e.message === "ResizeObserver loop completed with undelivered notifications.") {
+        e.stopImmediatePropagation()
+      }
+    }
+    window.addEventListener("error", handleError)
+    return () => window.removeEventListener("error", handleError)
+  }, [])
 
   useEffect(() => {
     scrollToBottom()
@@ -142,7 +159,10 @@ export function AIChatbox() {
           </div>
 
           {/* Messages with better styling */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-gradient-to-b from-muted/30 to-background">
+          <div
+            ref={messagesContainerRef}
+            className="flex-1 overflow-y-auto p-5 space-y-4 bg-gradient-to-b from-muted/30 to-background"
+          >
             {messages.map((message) => (
               <div key={message.id} className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
                 <div
