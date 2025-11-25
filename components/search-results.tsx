@@ -4,7 +4,9 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { PropertyCard } from "@/components/property-card"
 import { useLanguage } from "@/contexts/language-context"
-import { Loader2 } from "lucide-react"
+import { Loader2, Home } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 interface Property {
   id: number
@@ -100,6 +102,15 @@ export function SearchResults() {
 
   return (
     <div className="container mx-auto px-4 py-12">
+      <div className="mb-6">
+        <Button variant="outline" size="sm" asChild>
+          <Link href="/">
+            <Home className="h-4 w-4 mr-2" />
+            {t("home")}
+          </Link>
+        </Button>
+      </div>
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2">{t("searchResults")}</h1>
         <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">

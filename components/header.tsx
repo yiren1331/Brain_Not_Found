@@ -38,8 +38,8 @@ export function Header() {
                 <DropdownMenuItem onClick={() => setLanguage("ms")}>Bahasa Melayu</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90">
-              {t("listProperty")}
+            <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" asChild>
+              <Link href="/properties">{t("listProperty")}</Link>
             </Button>
           </div>
         </nav>

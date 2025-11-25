@@ -19,6 +19,7 @@ const translations = {
     contact: "Contact",
     signIn: "Sign In",
     listProperty: "List Property",
+    home: "Home",
 
     // Hero
     heroTitle1: "Find Your Perfect",
@@ -46,6 +47,7 @@ const translations = {
     featuredTitle: "Featured Properties in Klang Valley",
     featuredSubtitle: "Explore our handpicked selection of the best rental properties available right now.",
     perMonth: "per month",
+    month: "month",
     bed: "bed",
     beds: "beds",
     bath: "baths",
@@ -57,6 +59,9 @@ const translations = {
     property: "property",
     properties: "properties",
     found: "found",
+
+    allProperties: "All Properties",
+    clickToViewProperty: "Click on any property to view details",
 
     favourites: "Favourites",
     favouritesDescription: "Your saved properties for quick access",
@@ -112,6 +117,7 @@ const translations = {
     contact: "Hubungi",
     signIn: "Log Masuk",
     listProperty: "Senarai Hartanah",
+    home: "Laman Utama",
 
     // Hero
     heroTitle1: "Cari Rumah Sewa",
@@ -139,6 +145,7 @@ const translations = {
     featuredTitle: "Hartanah Pilihan di Lembah Klang",
     featuredSubtitle: "Terokai pilihan hartanah sewa terbaik kami yang tersedia sekarang.",
     perMonth: "sebulan",
+    month: "bulan",
     bed: "bilik",
     beds: "bilik",
     bath: "bilik air",
@@ -150,6 +157,9 @@ const translations = {
     property: "hartanah",
     properties: "hartanah",
     found: "ditemui",
+
+    allProperties: "Semua Hartanah",
+    clickToViewProperty: "Klik pada mana-mana hartanah untuk melihat butiran",
 
     favourites: "Kegemaran",
     favouritesDescription: "Hartanah tersimpan anda untuk akses pantas",
