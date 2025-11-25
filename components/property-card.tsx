@@ -100,7 +100,6 @@ export function PropertyCard({
             <span className="text-2xl font-bold text-primary">RM{price.toLocaleString()}</span>
             <span className="text-muted-foreground text-sm">/{t("perMonth")}</span>
           </div>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90">View Details</Button>
         </div>
       </CardContent>
     </Card>
