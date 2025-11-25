@@ -19,9 +19,11 @@ import {
 } from "@/components/ui/dialog"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Pencil, Trash2, Home, ArrowLeft, Search } from "lucide-react"
+import { Plus, Pencil, Trash2, Home, ArrowLeft, Search, Database, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import type { Property } from "@/lib/db"
+import { useLanguage } from "@/contexts/language-context"
+import { useToast } from "@/hooks/use-toast"
 
 const LOCATIONS = [
   "KLCC",
@@ -58,6 +60,9 @@ const emptyProperty = {
 }
 
 export default function AdminPage() {
+  const { t } = useLanguage()
+  const { toast } = useToast()
+
   const [properties, setProperties] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -67,6 +72,8 @@ export default function AdminPage() {
   const [deletingProperty, setDeletingProperty] = useState<Property | null>(null)
   const [formData, setFormData] = useState(emptyProperty)
   const [saving, setSaving] = useState(false)
+  const [setupLoading, setSetupLoading] = useState(false)
+  const [syncLoading, setSyncLoading] = useState(false)
 
   useEffect(() => {
     fetchProperties()
@@ -74,11 +81,19 @@ export default function AdminPage() {
 
   const fetchProperties = async () => {
     try {
+      console.log("[v0] Admin: Starting to fetch properties")
       const response = await fetch("/api/properties?all=true")
+      console.log("[v0] Admin: Response status:", response.status)
+
       const data = await response.json()
+      console.log("[v0] Admin: Received data type:", typeof data)
+      console.log("[v0] Admin: Is array?", Array.isArray(data))
+      console.log("[v0] Admin: Data length:", Array.isArray(data) ? data.length : "not an array")
+      console.log("[v0] Admin: First item:", data[0])
+
       setProperties(Array.isArray(data) ? data : [])
     } catch (error) {
-      console.error("Error fetching properties:", error)
+      console.error("[v0] Admin: Error fetching properties:", error)
       setProperties([])
     } finally {
       setLoading(false)
@@ -156,6 +171,91 @@ export default function AdminPage() {
     }
   }
 
+  const handleSetupJamAI = async () => {
+    setSetupLoading(true)
+    try {
+      console.log("[v0] Calling JamAI setup API...")
+      const response = await fetch("/api/jamai/setup", {
+        method: "POST",
+      })
+
+      console.log("[v0] Setup response status:", response.status)
+
+      let data
+      const contentType = response.headers.get("content-type")
+
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json()
+      } else {
+        // Handle non-JSON responses (like plain text errors)
+        const text = await response.text()
+        console.error("[v0] Non-JSON response:", text)
+        data = { error: text || "Unknown error occurred" }
+      }
+
+      if (response.ok && data.success) {
+        console.log("[v0] Setup successful:", data)
+        toast({
+          title: t("setupSuccess"),
+          description: "JamAI Base tables are ready to use.",
+        })
+      } else {
+        throw new Error(data.error || "Setup failed")
+      }
+    } catch (error) {
+      console.error("[v0] Error setting up JamAI:", error)
+      toast({
+        variant: "destructive",
+        title: t("setupError"),
+        description: error instanceof Error ? error.message : "Unknown error",
+      })
+    } finally {
+      setSetupLoading(false)
+    }
+  }
+
+  const handleSyncToJamAI = async () => {
+    setSyncLoading(true)
+    try {
+      console.log("[v0] Calling JamAI sync API...")
+      const response = await fetch("/api/jamai/sync-properties", {
+        method: "POST",
+      })
+
+      console.log("[v0] Sync response status:", response.status)
+
+      let data
+      const contentType = response.headers.get("content-type")
+
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json()
+      } else {
+        const text = await response.text()
+        console.error("[v0] Non-JSON response:", text)
+        data = { error: text || "Unknown error occurred" }
+      }
+
+      if (response.ok && data.success) {
+        console.log("[v0] Sync successful:", data)
+        toast({
+          title: t("syncSuccess"),
+          description: `Synced ${data.count || 0} properties to JamAI Base.`,
+        })
+      } else {
+        throw new Error(data.error || "Sync failed")
+      }
+    } catch (error) {
+      console.error("[v0] Error syncing properties:", error)
+      toast({
+        variant: "destructive",
+        title: t("syncError"),
+        description: error instanceof Error ? error.message : "Unknown error",
+      })
+    } finally {
+      setSyncLoading(false)
+    }
+  }
+
   const filteredProperties = properties.filter(
     (p) =>
       p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -185,6 +285,39 @@ export default function AdminPage() {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        {/* JamAI Setup Card */}
+        <Card className="mb-6 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-primary" />
+              {t("jamaiSetup")}
+            </CardTitle>
+            <CardDescription>{t("jamaiSetupDesc")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={handleSetupJamAI}
+                disabled={setupLoading}
+                variant="outline"
+                className="gap-2 bg-transparent"
+              >
+                <Database className="h-4 w-4" />
+                {setupLoading ? t("settingUp") : t("setupTables")}
+              </Button>
+              <Button
+                onClick={handleSyncToJamAI}
+                disabled={syncLoading}
+                variant="outline"
+                className="gap-2 bg-transparent"
+              >
+                <RefreshCw className={`h-4 w-4 ${syncLoading ? "animate-spin" : ""}`} />
+                {syncLoading ? t("syncing") : t("syncProperties")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

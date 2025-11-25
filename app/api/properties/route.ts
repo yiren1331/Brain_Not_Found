@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const showAll = searchParams.get("all") === "true"
 
+    console.log("[v0] Fetching properties, showAll:", showAll)
+
     let properties
     if (showAll) {
       properties = await sql`SELECT * FROM properties ORDER BY created_at DESC`
@@ -14,9 +16,12 @@ export async function GET(request: NextRequest) {
       properties = await sql`SELECT * FROM properties WHERE is_available = true ORDER BY created_at DESC`
     }
 
+    console.log("[v0] Fetched properties count:", properties.length)
+    console.log("[v0] Properties data:", JSON.stringify(properties.slice(0, 2), null, 2))
+
     return NextResponse.json(properties)
   } catch (error) {
-    console.error("Error fetching properties:", error)
+    console.error("[v0] Error fetching properties:", error)
     return NextResponse.json({ error: "Failed to fetch properties" }, { status: 500 })
   }
 }

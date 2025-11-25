@@ -120,6 +120,44 @@ export function AIChatbox() {
     }
   }
 
+  const renderMessage = (text: string) => {
+    // Match markdown links: [text](url)
+    const linkRegex = /\[([^\]]+)\]$$([^)]+)$$/g
+    const parts = []
+    let lastIndex = 0
+    let match
+
+    while ((match = linkRegex.exec(text)) !== null) {
+      // Add text before the link
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index))
+      }
+
+      // Add the link as a button
+      const linkText = match[1]
+      const url = match[2]
+      parts.push(
+        <a
+          key={match.index}
+          href={url}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-medium transition-colors my-2"
+          onClick={() => setIsOpen(false)}
+        >
+          {linkText} →
+        </a>,
+      )
+
+      lastIndex = match.index + match[0].length
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex))
+    }
+
+    return parts.length > 0 ? parts : text
+  }
+
   return (
     <>
       {/* Floating button with gradient and animation */}
@@ -172,7 +210,7 @@ export function AIChatbox() {
                       : "bg-card text-card-foreground border border-border rounded-bl-sm"
                   }`}
                 >
-                  <p className="text-sm leading-relaxed">{message.text}</p>
+                  <div className="text-sm leading-relaxed whitespace-pre-wrap">{renderMessage(message.text)}</div>
                   <p
                     className={`text-xs mt-1 ${message.sender === "user" ? "text-white/70" : "text-muted-foreground"}`}
                   >

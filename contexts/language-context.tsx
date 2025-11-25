@@ -74,6 +74,22 @@ const translations = {
     // Footer
     footerTagline: "Finding a house has never been this easy.",
     allRights: "All rights reserved.",
+
+    // Search Results
+    searchResults: "Search Results",
+    noPropertiesFound: "No properties found matching your criteria. Try adjusting your filters.",
+
+    // Admin - JamAI Setup
+    jamaiSetup: "JamAI Base Setup",
+    jamaiSetupDesc: "Configure AI-powered property recommendations and chat",
+    setupTables: "Setup JamAI Tables",
+    syncProperties: "Sync Properties to JamAI",
+    settingUp: "Setting up...",
+    syncing: "Syncing...",
+    setupSuccess: "JamAI tables created successfully!",
+    syncSuccess: "Properties synced to JamAI successfully!",
+    setupError: "Error setting up JamAI tables",
+    syncError: "Error syncing properties",
   },
   ms: {
     // Header
@@ -138,6 +154,22 @@ const translations = {
     // Footer
     footerTagline: "Mencari rumah tidak pernah semudah ini.",
     allRights: "Hak cipta terpelihara.",
+
+    // Search Results
+    searchResults: "Hasil Carian",
+    noPropertiesFound: "Tiada hartanah yang sepadan dengan kriteria anda. Cuba laraskan penapis anda.",
+
+    // Admin - JamAI Setup
+    jamaiSetup: "Persediaan JamAI Base",
+    jamaiSetupDesc: "Konfigurasikan cadangan hartanah dan sembang berkuasa AI",
+    setupTables: "Sediakan Jadual JamAI",
+    syncProperties: "Segerakkan Hartanah ke JamAI",
+    settingUp: "Menyediakan...",
+    syncing: "Menyegerakkan...",
+    setupSuccess: "Jadual JamAI berjaya dibuat!",
+    syncSuccess: "Hartanah berjaya disegerakkan ke JamAI!",
+    setupError: "Ralat menyediakan jadual JamAI",
+    syncError: "Ralat menyegerakkan hartanah",
   },
 }
 
