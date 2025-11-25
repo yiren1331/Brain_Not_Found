@@ -59,6 +59,8 @@ export function AIChatbox() {
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading) return
 
+    console.log("[v0] Chat: User sending message:", inputValue)
+
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -72,6 +74,8 @@ export function AIChatbox() {
     setIsLoading(true)
 
     try {
+      console.log("[v0] Chat: Calling API with messages count:", messages.length + 1)
+
       // Call the AI API
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -86,11 +90,14 @@ export function AIChatbox() {
         }),
       })
 
+      console.log("[v0] Chat: API response status:", response.status)
+
       if (!response.ok) {
         throw new Error("Failed to get response")
       }
 
       const data = await response.json()
+      console.log("[v0] Chat: Received AI response:", data.message)
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -100,7 +107,7 @@ export function AIChatbox() {
       }
       setMessages((prev) => [...prev, aiMessage])
     } catch (error) {
-      console.error("[v0] Error sending message:", error)
+      console.error("[v0] Chat: Error sending message:", error)
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         text: t("aiResponsePlaceholder"),
@@ -110,6 +117,7 @@ export function AIChatbox() {
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
+      console.log("[v0] Chat: Message send complete")
     }
   }
 

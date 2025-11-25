@@ -1,109 +1,262 @@
-import { generateText } from "ai"
+import { NextResponse } from "next/server"
+import { neon } from "@neondatabase/serverless"
 
 export async function POST(req: Request) {
+  console.log("[v0] Chat API: Request received")
+
   try {
     const { messages } = await req.json()
+    console.log("[v0] Chat API: Processing", messages.length, "messages")
 
-    const systemPrompt = `You are a helpful AI assistant for a house rental platform in Klang Valley, Malaysia. You are bilingual (English & Bahasa Melayu) and provide intelligent property search assistance.
+    // Get the last user message
+    const lastMessage = messages[messages.length - 1]
+    const userQuery = lastMessage.content.toLowerCase()
 
-**YOUR MISSION:**
-Help users find their perfect rental home by understanding their needs and directing them to personalized search results.
+    console.log("[v0] Chat API: User query:", userQuery)
 
-**LANGUAGE DETECTION:**
-- Detect the user's language automatically
-- If user speaks Bahasa Melayu, respond completely in Bahasa Melayu
-- If user speaks English, respond in English
-- Be natural and conversational in both languages
+    // Initialize database connection
+    const sql = neon(process.env.DATABASE_URL!)
 
-**SEARCH LINK GENERATION:**
-When users mention criteria (location, bedrooms, price, furnished status), ALWAYS provide a clickable search link.
+    // Detect language
+    const isMalay = /\b(saya|nak|cari|rumah|bilik|harga|murah|dengan)\b/i.test(userQuery)
+    console.log("[v0] Chat API: Detected language:", isMalay ? "Malay" : "English")
 
-**Link Format:**
-- English: [View Properties](/search?location={location}&bedrooms={num}&minPrice={min}&maxPrice={max}&furnished={type})
-- Bahasa Melayu: [Lihat Hartanah](/search?location={location}&bedrooms={num}&minPrice={min}&maxPrice={max}&furnished={type})
+    // Extract search parameters
+    let location = ""
+    let bedrooms = 0
+    let maxPrice = 0
+    const minPrice = 0
+    let furnished = ""
 
-**Available Locations (Klang Valley):**
-KLCC, Petaling Jaya, Shah Alam, Subang Jaya, Mont Kiara, Bangsar, Bukit Bintang, Damansara, Puchong, Cyberjaya, Putrajaya, Klang, Kajang
+    // Location detection
+    const locations = [
+      "klcc",
+      "bukit bintang",
+      "mont kiara",
+      "bangsar",
+      "petaling jaya",
+      "shah alam",
+      "subang jaya",
+      "puchong",
+      "cyberjaya",
+      "putrajaya",
+      "klang",
+      "kajang",
+      "bukit jalil",
+      "cheras",
+      "ampang",
+    ]
+    for (const loc of locations) {
+      if (userQuery.includes(loc)) {
+        location = loc
+          .split(" ")
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(" ")
+        break
+      }
+    }
 
-**Parameters:**
-- location: Use exact location name or "All" if not specified
-- bedrooms: 1, 2, 3, 4, or 5+ (omit if not mentioned)
-- minPrice: minimum in RM (omit if not mentioned)
-- maxPrice: maximum in RM (omit if not mentioned)
-- furnished: "fully", "partially", or "unfurnished" (omit if not mentioned)
+    // Bedroom detection
+    const bedroomMatch = userQuery.match(/(\d+)\s*(bedroom|bilik|room)/i)
+    if (bedroomMatch) {
+      bedrooms = Number.parseInt(bedroomMatch[1])
+    }
 
-**Example Conversations:**
+    // Price detection
+    const priceMatch = userQuery.match(/(?:rm|ringgit)?\s*(\d+)/i)
+    if (priceMatch) {
+      maxPrice = Number.parseInt(priceMatch[1])
+    }
 
-🇬🇧 **English Examples:**
+    // Budget keyword
+    if (userQuery.includes("budget") || userQuery.includes("bawah") || userQuery.includes("under")) {
+      if (priceMatch) maxPrice = Number.parseInt(priceMatch[1])
+    }
 
-User: "I need a cheap room near KLCC"
-You: "I'd be happy to help you find affordable accommodation near KLCC! Let me show you options under RM1,500 in that area:
+    // Furnished detection
+    if (userQuery.includes("furnished") || userQuery.includes("berperabot") || userQuery.includes("perabot")) {
+      furnished = "full"
+    }
 
-[View Properties](/search?location=KLCC&maxPrice=1500)
+    console.log("[v0] Chat API: Extracted params:", { location, bedrooms, maxPrice, furnished })
 
-KLCC has great public transport connectivity. Would you like to adjust your budget or explore other areas?"
+    // Build SQL query using tagged template literals
+    let properties: any[] = []
 
-User: "3 bedroom condo, fully furnished, budget 4000"
-You: "Excellent! Here are fully furnished 3-bedroom condos within RM4,000 across Klang Valley:
+    if (location && bedrooms > 0 && maxPrice > 0 && furnished) {
+      properties = await sql`
+        SELECT * FROM properties 
+        WHERE is_available = true 
+        AND location ILIKE ${`%${location}%`}
+        AND bedrooms >= ${bedrooms}
+        AND price <= ${maxPrice}
+        AND furnished = ${furnished}
+        ORDER BY price ASC 
+        LIMIT 5
+      `
+    } else if (location && bedrooms > 0 && maxPrice > 0) {
+      properties = await sql`
+        SELECT * FROM properties 
+        WHERE is_available = true 
+        AND location ILIKE ${`%${location}%`}
+        AND bedrooms >= ${bedrooms}
+        AND price <= ${maxPrice}
+        ORDER BY price ASC 
+        LIMIT 5
+      `
+    } else if (location && bedrooms > 0) {
+      properties = await sql`
+        SELECT * FROM properties 
+        WHERE is_available = true 
+        AND location ILIKE ${`%${location}%`}
+        AND bedrooms >= ${bedrooms}
+        ORDER BY price ASC 
+        LIMIT 5
+      `
+    } else if (location && maxPrice > 0) {
+      properties = await sql`
+        SELECT * FROM properties 
+        WHERE is_available = true 
+        AND location ILIKE ${`%${location}%`}
+        AND price <= ${maxPrice}
+        ORDER BY price ASC 
+        LIMIT 5
+      `
+    } else if (location) {
+      properties = await sql`
+        SELECT * FROM properties 
+        WHERE is_available = true 
+        AND location ILIKE ${`%${location}%`}
+        ORDER BY price ASC 
+        LIMIT 5
+      `
+    } else if (bedrooms > 0 && maxPrice > 0) {
+      properties = await sql`
+        SELECT * FROM properties 
+        WHERE is_available = true 
+        AND bedrooms >= ${bedrooms}
+        AND price <= ${maxPrice}
+        ORDER BY price ASC 
+        LIMIT 5
+      `
+    } else if (bedrooms > 0) {
+      properties = await sql`
+        SELECT * FROM properties 
+        WHERE is_available = true 
+        AND bedrooms >= ${bedrooms}
+        ORDER BY price ASC 
+        LIMIT 5
+      `
+    } else if (maxPrice > 0) {
+      properties = await sql`
+        SELECT * FROM properties 
+        WHERE is_available = true 
+        AND price <= ${maxPrice}
+        ORDER BY price ASC 
+        LIMIT 5
+      `
+    } else if (furnished) {
+      properties = await sql`
+        SELECT * FROM properties 
+        WHERE is_available = true 
+        AND furnished = ${furnished}
+        ORDER BY price ASC 
+        LIMIT 5
+      `
+    } else {
+      // No specific filters, return general properties
+      properties = await sql`
+        SELECT * FROM properties 
+        WHERE is_available = true 
+        ORDER BY price ASC 
+        LIMIT 5
+      `
+    }
 
-[View Properties](/search?bedrooms=3&maxPrice=4000&furnished=fully)
+    console.log("[v0] Chat API: Found properties:", properties.length)
 
-These properties offer modern amenities and convenient locations. Need help narrowing down by specific area?"
+    // Generate response
+    let response = ""
+    let searchUrl = "/search?"
+    const searchParams: string[] = []
 
-🇲🇾 **Bahasa Melayu Examples:**
+    if (isMalay) {
+      if (properties.length === 0) {
+        response = "Maaf, saya tidak jumpa hartanah yang sesuai dengan keperluan anda. Cuba ubah kriteria carian anda."
+      } else {
+        response = `Saya jumpa ${properties.length} hartanah yang sesuai untuk anda! `
 
-User: "Saya nak cari rumah sewa murah dekat Petaling Jaya"
-You: "Saya boleh bantu anda cari rumah sewa yang berpatutan di Petaling Jaya! Mari saya tunjukkan pilihan yang ada:
+        if (location) {
+          response += `di ${location} `
+          searchParams.push(`location=${encodeURIComponent(location)}`)
+        }
+        if (bedrooms > 0) {
+          response += `dengan ${bedrooms} bilik tidur `
+          searchParams.push(`bedrooms=${bedrooms}`)
+        }
+        if (maxPrice > 0) {
+          response += `dalam bajet RM${maxPrice} `
+          searchParams.push(`maxPrice=${maxPrice}`)
+        }
 
-[Lihat Hartanah](/search?location=Petaling%20Jaya&maxPrice=1500)
+        response += "\n\nBerikut adalah beberapa cadangan:\n\n"
 
-Petaling Jaya mempunyai banyak pilihan hartanah dengan harga berpatutan. Adakah anda perlukan lebih banyak maklumat?"
+        properties.slice(0, 3).forEach((prop: any, i: number) => {
+          response += `${i + 1}. **${prop.title_ms || prop.title}**\n`
+          response += `   - Lokasi: ${prop.location}\n`
+          response += `   - Harga: RM${prop.price}/bulan\n`
+          response += `   - Bilik: ${prop.bedrooms} bilik tidur, ${prop.bathrooms} bilik air\n\n`
+        })
 
-User: "Ada tak bilik 2, fully furnished, area Shah Alam"
-You: "Ada! Ini adalah hartanah 2 bilik fully furnished di Shah Alam:
+        searchUrl += searchParams.join("&")
+        response += `\n[Lihat Semua Hartanah](${searchUrl})`
+      }
+    } else {
+      if (properties.length === 0) {
+        response =
+          "Sorry, I couldn't find any properties matching your requirements. Try adjusting your search criteria."
+      } else {
+        response = `I found ${properties.length} properties that match your needs! `
 
-[Lihat Hartanah](/search?location=Shah%20Alam&bedrooms=2&furnished=fully)
+        if (location) {
+          response += `in ${location} `
+          searchParams.push(`location=${encodeURIComponent(location)}`)
+        }
+        if (bedrooms > 0) {
+          response += `with ${bedrooms} bedrooms `
+          searchParams.push(`bedrooms=${bedrooms}`)
+        }
+        if (maxPrice > 0) {
+          response += `under RM${maxPrice} `
+          searchParams.push(`maxPrice=${maxPrice}`)
+        }
 
-Shah Alam merupakan lokasi strategik dengan kemudahan lengkap. Nak saya bantu dengan apa-apa lagi?"
+        response += "\n\nHere are some recommendations:\n\n"
 
-User: "Budget saya RM2000-3000, nak dekat LRT"
-You: "Baik! Saya cadangkan hartanah berhampiran LRT dalam budget RM2,000-3,000. Lokasi yang sesuai termasuk Bukit Bintang, KLCC, dan Subang Jaya:
+        properties.slice(0, 3).forEach((prop: any, i: number) => {
+          response += `${i + 1}. **${prop.title}**\n`
+          response += `   - Location: ${prop.location}\n`
+          response += `   - Price: RM${prop.price}/month\n`
+          response += `   - Rooms: ${prop.bedrooms} bedrooms, ${prop.bathrooms} bathrooms\n\n`
+        })
 
-[Lihat Hartanah](/search?minPrice=2000&maxPrice=3000)
+        searchUrl += searchParams.join("&")
+        response += `\n[View All Properties](${searchUrl})`
+      }
+    }
 
-Semua lokasi ini mempunyai akses mudah ke LRT. Nak spesifikkan area tertentu?"
+    console.log("[v0] Chat API: Generated response:", response)
 
-**INTELLIGENT RECOMMENDATIONS:**
-- Suggest nearby alternatives if exact location is unavailable
-- Recommend budget adjustments if criteria too strict
-- Mention nearby amenities (LRT, shopping, universities)
-- Provide area insights (e.g., "Mont Kiara is popular with expats")
+    return NextResponse.json({ message: response })
+  } catch (error: any) {
+    console.error("[v0] Chat API: Error:", error)
 
-**URL ENCODING:**
-- Always encode spaces: "Petaling Jaya" → "Petaling%20Jaya"
-- Keep links clean and functional
-
-**TONE:**
-- Friendly and helpful, like a local friend
-- Professional but not stiff
-- Show enthusiasm about properties
-- Ask follow-up questions to refine search
-
-**EMERGENCY FALLBACK:**
-If unsure, ask clarifying questions: "Boleh beritahu saya lebih detail tentang jenis rumah yang anda cari?" or "Could you tell me more about what you're looking for?"
-
-Be helpful, intelligent, and always provide actionable search links!`
-
-    const { text } = await generateText({
-      model: "openai/gpt-4o-mini",
-      messages: [{ role: "system", content: systemPrompt }, ...messages],
-      temperature: 0.7,
-      maxTokens: 600,
-    })
-
-    return Response.json({ message: text })
-  } catch (error) {
-    console.error("[v0] Error in chat API:", error)
-    return Response.json({ message: "Sorry, I encountered an error. Please try again." }, { status: 500 })
+    return NextResponse.json(
+      {
+        message: "Maaf, terdapat masalah teknikal. / Sorry, I encountered a technical error. Please try again.",
+        error: error.message,
+      },
+      { status: 500 },
+    )
   }
 }
