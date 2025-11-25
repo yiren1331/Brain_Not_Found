@@ -6,8 +6,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Bed, Bath, Square, MapPin, Heart, Phone, Sofa, ExternalLink, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useLanguage } from "@/contexts/language-context"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useLanguage } from "@/contexts/language-context"
 
 interface PropertyCardProps {
   id: number
@@ -55,9 +55,17 @@ export function PropertyCard({
   const displayDescription = language === "ms" && description_ms ? description_ms : description
 
   const isGoogleSearchUrl = image_url?.includes("google.com/search")
+
+  // Extract location for better placeholder generation
+  const extractedLocation =
+    location || address?.split("/").pop()?.replace(/\+/g, " ").split(" ").slice(0, 2).join(" ") || ""
+
+  // Create detailed query for placeholder image generation
+  const placeholderQuery = `${title} ${extractedLocation} ${bedrooms} bedroom apartment condominium Malaysia`.trim()
+
   const displayImage =
     !image_url || isGoogleSearchUrl || imageError
-      ? `/placeholder.svg?height=400&width=600&query=${encodeURIComponent(title)}`
+      ? `/placeholder.svg?height=400&width=600&query=${encodeURIComponent(placeholderQuery)}`
       : image_url
 
   const displayLocation = location || address?.split("/").pop()?.replace(/\+/g, " ") || title
@@ -79,6 +87,7 @@ export function PropertyCard({
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
             onError={() => setImageError(true)}
+            priority={false}
           />
           <Button
             size="icon"
@@ -162,6 +171,7 @@ export function PropertyCard({
                 fill
                 className="object-cover"
                 onError={() => setImageError(true)}
+                priority={false}
               />
             </div>
 
