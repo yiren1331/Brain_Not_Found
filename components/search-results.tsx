@@ -18,7 +18,9 @@ interface Property {
   furnished: string
   contact_number: string
   description: string
+  description_ms: string
   address: string
+  size_sqft: number
 }
 
 export function SearchResults() {
@@ -32,6 +34,7 @@ export function SearchResults() {
   const minPrice = searchParams.get("minPrice")
   const maxPrice = searchParams.get("maxPrice")
   const furnished = searchParams.get("furnished")
+  const title = searchParams.get("title") || ""
 
   useEffect(() => {
     async function fetchProperties() {
@@ -40,8 +43,13 @@ export function SearchResults() {
         if (!response.ok) throw new Error("Failed to fetch")
         const data = await response.json()
 
-        // Filter properties based on search params
-        let filtered = Array.isArray(data) ? data : []
+        let filtered = Array.isArray(data.properties) ? data.properties : Array.isArray(data) ? data : []
+
+        if (title) {
+          filtered = filtered.filter(
+            (p) => p.title?.toLowerCase() === title.toLowerCase() || p.title_ms?.toLowerCase() === title.toLowerCase(),
+          )
+        }
 
         if (location) {
           filtered = filtered.filter((p) => {
@@ -80,7 +88,7 @@ export function SearchResults() {
     }
 
     fetchProperties()
-  }, [location, bedrooms, minPrice, maxPrice, furnished])
+  }, [location, bedrooms, minPrice, maxPrice, furnished, title])
 
   if (loading) {
     return (
@@ -95,6 +103,7 @@ export function SearchResults() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground mb-2">{t("searchResults")}</h1>
         <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+          {title && <span className="px-3 py-1 bg-primary/10 text-primary rounded-full font-medium">{title}</span>}
           {location && <span className="px-3 py-1 bg-muted rounded-full capitalize">{location}</span>}
           {bedrooms && (
             <span className="px-3 py-1 bg-muted rounded-full">

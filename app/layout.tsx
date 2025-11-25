@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { LanguageProvider } from "@/contexts/language-context"
+import { FavouritesProvider } from "@/contexts/favourites-context"
 import { AIChatbox } from "@/components/ai-chatbox"
 import "./globals.css"
 
@@ -42,8 +43,10 @@ export default function RootLayout({
     <html lang="en">
       <body className={`font-sans antialiased`}>
         <LanguageProvider>
-          {children}
-          <AIChatbox />
+          <FavouritesProvider>
+            {children}
+            <AIChatbox />
+          </FavouritesProvider>
         </LanguageProvider>
         <Analytics />
       </body>

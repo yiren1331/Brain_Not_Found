@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Home, Languages } from "lucide-react"
+import { Home, Languages, Heart } from "lucide-react"
 import { useLanguage } from "@/contexts/language-context"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
@@ -19,6 +19,13 @@ export function Header() {
           </Link>
 
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/favourites">
+                <Heart className="h-4 w-4 mr-2" />
+                {t("favourites")}
+              </Link>
+            </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm">

@@ -1,13 +1,17 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Bed, Bath, Square, MapPin, Heart, Phone, Sofa, ExternalLink, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useLanguage } from "@/contexts/language-context"
+import { useFavourites } from "@/contexts/favourites-context"
 
 interface PropertyCardProps {
   id: number
@@ -27,6 +31,7 @@ interface PropertyCardProps {
 }
 
 export function PropertyCard({
+  id,
   title,
   title_ms,
   location,
@@ -42,8 +47,11 @@ export function PropertyCard({
   description_ms,
 }: PropertyCardProps) {
   const { t, language } = useLanguage()
+  const { toggleFavourite, isFavourite } = useFavourites()
   const [showDetails, setShowDetails] = useState(false)
   const [imageError, setImageError] = useState(false)
+
+  const isFav = isFavourite(id)
 
   const getFurnishedLabel = () => {
     if (furnished === "fully") return t("fullyFurnished")
@@ -56,11 +64,9 @@ export function PropertyCard({
 
   const isGoogleSearchUrl = image_url?.includes("google.com/search")
 
-  // Extract location for better placeholder generation
   const extractedLocation =
     location || address?.split("/").pop()?.replace(/\+/g, " ").split(" ").slice(0, 2).join(" ") || ""
 
-  // Create detailed query for placeholder image generation
   const placeholderQuery = `${title} ${extractedLocation} ${bedrooms} bedroom apartment condominium Malaysia`.trim()
 
   const displayImage =
@@ -76,6 +82,13 @@ export function PropertyCard({
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayLocation)}`
 
   const numericPrice = typeof price === "string" ? Number.parseFloat(price) : price
+
+  const handleToggleFavourite = (e: React.MouseEvent) => {
+    e.preventDefault()
+    console.log("[v0] Toggling favourite for property ID:", id, "Current status:", isFav)
+    toggleFavourite(id)
+    console.log("[v0] After toggle, new status:", !isFav)
+  }
 
   return (
     <>
@@ -93,14 +106,19 @@ export function PropertyCard({
             size="icon"
             variant="secondary"
             className="absolute top-4 right-4 h-9 w-9 rounded-full bg-card/90 backdrop-blur-sm hover:bg-card"
+            onClick={handleToggleFavourite}
           >
-            <Heart className="h-4 w-4" />
+            <Heart className={`h-4 w-4 ${isFav ? "fill-red-500 text-red-500" : ""}`} />
           </Button>
         </div>
 
         <CardContent className="p-6">
           <div className="mb-4">
-            <h3 className="text-xl font-semibold mb-2 text-balance">{displayTitle}</h3>
+            <Link href={`/search?title=${encodeURIComponent(title)}`}>
+              <h3 className="text-xl font-semibold mb-2 text-balance hover:text-primary transition-colors cursor-pointer">
+                {displayTitle}
+              </h3>
+            </Link>
             <div className="flex items-center text-muted-foreground text-sm">
               <MapPin className="h-4 w-4 mr-1 flex-shrink-0" />
               <span className="line-clamp-1">{displayLocation}</span>
@@ -163,7 +181,6 @@ export function PropertyCard({
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Property Image */}
             <div className="relative aspect-video overflow-hidden rounded-lg">
               <Image
                 src={displayImage || "/placeholder.svg"}
@@ -175,7 +192,6 @@ export function PropertyCard({
               />
             </div>
 
-            {/* Price and Details */}
             <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
               <div>
                 <span className="text-3xl font-bold text-primary">RM{numericPrice.toLocaleString()}</span>
@@ -203,7 +219,6 @@ export function PropertyCard({
               </div>
             </div>
 
-            {/* Description */}
             {displayDescription && (
               <div>
                 <h3 className="font-semibold text-lg mb-2">{t("description")}</h3>
@@ -211,7 +226,6 @@ export function PropertyCard({
               </div>
             )}
 
-            {/* Furnishing Status */}
             <div>
               <h3 className="font-semibold text-lg mb-2">{t("furnishing")}</h3>
               <Badge variant="secondary" className="text-base px-4 py-1">
@@ -220,7 +234,6 @@ export function PropertyCard({
               </Badge>
             </div>
 
-            {/* Contact and Location */}
             <div className="space-y-3">
               {contact_number && (
                 <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">

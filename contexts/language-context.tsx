@@ -58,6 +58,12 @@ const translations = {
     properties: "properties",
     found: "found",
 
+    favourites: "Favourites",
+    favouritesDescription: "Your saved properties for quick access",
+    noFavourites: "No Favourites Yet",
+    noFavouritesDescription: "Click the heart icon on any property to add it to your favourites",
+    loading: "Loading...",
+
     // Features
     whyChooseUs: "Why Choose Us",
     whyChooseSubtitle: "We make finding your perfect rental home in Klang Valley easy and hassle-free.",
@@ -144,6 +150,12 @@ const translations = {
     property: "hartanah",
     properties: "hartanah",
     found: "ditemui",
+
+    favourites: "Kegemaran",
+    favouritesDescription: "Hartanah tersimpan anda untuk akses pantas",
+    noFavourites: "Tiada Kegemaran Lagi",
+    noFavouritesDescription: "Klik ikon hati pada mana-mana hartanah untuk menambahkannya ke kegemaran anda",
+    loading: "Memuatkan...",
 
     // Features
     whyChooseUs: "Mengapa Pilih Kami",
