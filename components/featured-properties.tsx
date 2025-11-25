@@ -49,15 +49,18 @@ export function FeaturedProperties() {
                 key={property.id}
                 id={property.id}
                 title={property.title}
-                titleMs={property.title_ms}
+                title_ms={property.title_ms}
                 location={property.location}
+                address={property.address}
                 price={Number(property.price)}
                 bedrooms={property.bedrooms}
                 bathrooms={property.bathrooms}
-                area={property.size_sqft || 0}
-                image={property.image_url || "/modern-apartment-living.png"}
-                contact={property.contact_number || ""}
+                size_sqft={property.size_sqft || 0}
+                image_url={property.image_url || ""}
+                contact_number={property.contact_number || ""}
                 furnished={property.furnished}
+                description={property.description}
+                description_ms={property.description_ms}
               />
             ))}
           </div>
