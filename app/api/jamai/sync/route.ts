@@ -7,11 +7,9 @@ export async function POST(request: Request) {
   try {
     console.log("[v0] Starting JamAI sync...")
 
-    // Parse request body to get selected tables
     const body = await request.json().catch(() => ({}))
     const { tables } = body
 
-    // Validate environment variables
     const jamaiApiKey = process.env.JAMAI_API_KEY
     const jamaiProjectId = process.env.JAMAI_PROJECT_ID
     const jamaiBaseUrl = process.env.JAMAI_BASE_URL || "https://api.jamaibase.com"
@@ -47,7 +45,6 @@ export async function POST(request: Request) {
     console.log(`[v0] Syncing to tables: ${tablesToSync.join(", ")}`)
     console.log("[v0] Fetching properties from Neon database...")
 
-    // Fetch all properties from Neon
     const properties = await sql`
       SELECT 
         id, title, title_ms, location, bedrooms, bathrooms, 
@@ -66,21 +63,35 @@ export async function POST(request: Request) {
     }
 
     const tableResults: Record<string, any> = {}
+    let hasInsufficientCredits = false
+    let creditErrorMessage = ""
 
     for (const tableId of tablesToSync) {
+      if (hasInsufficientCredits) {
+        tableResults[tableId] = {
+          total: 0,
+          succeeded: 0,
+          failed: 0,
+          error: "Skipped due to insufficient credits",
+        }
+        continue
+      }
+
       console.log(`[v0] Syncing to table: ${tableId}`)
 
       const results = []
       let successCount = 0
       let failCount = 0
 
-      // Sync each property to current JamAI table
       for (const property of properties) {
+        if (hasInsufficientCredits) {
+          break
+        }
+
         try {
           let propertyData: any
 
           if (tableId === "hackathon malay") {
-            // Malay column names
             propertyData = {
               ID: property.id.toString(),
               Lokasi: property.location || "",
@@ -92,7 +103,6 @@ export async function POST(request: Request) {
                 property.furnished === "fully" ? "Lengkap" : property.furnished === "partially" ? "Separa" : "Tiada",
             }
           } else {
-            // English column names for other tables
             propertyData = {
               property_id: property.id.toString(),
               title_en: property.title || "",
@@ -108,9 +118,6 @@ export async function POST(request: Request) {
             }
           }
 
-          console.log(`[v0] Syncing property ${property.id} to ${tableId}`)
-
-          // Call JamAI Base API to add row
           const response = await fetch(`${jamaiBaseUrl}/api/v1/gen_tables/action/rows/add`, {
             method: "POST",
             headers: {
@@ -127,31 +134,29 @@ export async function POST(request: Request) {
 
           if (!response.ok) {
             const errorText = await response.text()
+
+            if (errorText.includes("insufficient_credits") || errorText.includes("InsufficientCreditsError")) {
+              hasInsufficientCredits = true
+
+              try {
+                const errorJson = JSON.parse(errorText)
+                creditErrorMessage = errorJson.message || "Insufficient credits in JamAI Base account"
+              } catch {
+                creditErrorMessage = "Insufficient credits in JamAI Base account"
+              }
+
+              console.error(`[v0] JamAI credit error detected. Stopping sync.`)
+              break
+            }
+
             console.error(`[v0] Failed to sync property ${property.id} to ${tableId}:`, errorText)
             failCount++
-            results.push({
-              id: property.id,
-              title: property.title,
-              status: "failed",
-              error: errorText,
-            })
           } else {
             successCount++
-            results.push({
-              id: property.id,
-              title: property.title,
-              status: "success",
-            })
           }
         } catch (error: any) {
           console.error(`[v0] Error syncing property ${property.id} to ${tableId}:`, error)
           failCount++
-          results.push({
-            id: property.id,
-            title: property.title,
-            status: "failed",
-            error: error.message,
-          })
         }
       }
 
@@ -159,10 +164,24 @@ export async function POST(request: Request) {
         total: properties.length,
         succeeded: successCount,
         failed: failCount,
-        results: results,
       }
 
       console.log(`[v0] Sync to ${tableId} complete: ${successCount} succeeded, ${failCount} failed`)
+    }
+
+    if (hasInsufficientCredits) {
+      return NextResponse.json(
+        {
+          error: "insufficient_credits",
+          message: "JamAI Base Account Out of Credits",
+          details: creditErrorMessage,
+          solution:
+            "Your JamAI Base account has run out of credits. Please add credits at https://cloud.jamaibase.com/ or change to a free AI model in your action table settings.",
+          note: "Your website chat assistant works without JamAI sync. You can continue using the site for your hackathon demo.",
+          tables: tableResults,
+        },
+        { status: 402 },
+      )
     }
 
     return NextResponse.json({

@@ -40,6 +40,12 @@ const LOCATIONS = [
   "Klang",
   "Kajang",
   "Cheras",
+  "Ampang",
+  "Setapak",
+  "Kepong",
+  "Wangsa Maju",
+  "Sentul",
+  "Titiwangsa",
 ]
 
 const emptyProperty = {

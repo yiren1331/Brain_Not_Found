@@ -45,6 +45,12 @@ export async function POST(req: Request) {
       "bukit jalil",
       "cheras",
       "ampang",
+      "setapak",
+      "kepong",
+      "wangsa maju",
+      "sentul",
+      "titiwangsa",
+      "damansara",
     ]
     for (const loc of locations) {
       if (userQuery.includes(loc)) {
