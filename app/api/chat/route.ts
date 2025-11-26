@@ -8,261 +8,301 @@ export async function POST(req: Request) {
     const { messages } = await req.json()
     console.log("[v0] Chat API: Processing", messages.length, "messages")
 
-    // Get the last user message
     const lastMessage = messages[messages.length - 1]
-    const userQuery = lastMessage.content.toLowerCase()
+    const userQuery = lastMessage.content
 
     console.log("[v0] Chat API: User query:", userQuery)
 
-    // Initialize database connection
-    const sql = neon(process.env.DATABASE_URL!)
-
-    // Detect language
-    const isMalay = /\b(saya|nak|cari|rumah|bilik|harga|murah|dengan)\b/i.test(userQuery)
+    const isMalay = /\b(saya|nak|cari|rumah|bilik|harga|murah|dengan|di|hartanah|dekat)\b/i.test(
+      userQuery.toLowerCase(),
+    )
     console.log("[v0] Chat API: Detected language:", isMalay ? "Malay" : "English")
 
-    // Extract search parameters
-    let location = ""
-    let bedrooms = 0
-    let maxPrice = 0
-    const minPrice = 0
-    let furnished = ""
+    const sql = neon(process.env.DATABASE_URL!)
 
-    // Location detection
+    let locationFilter = ""
+    let bedroomsFilter = 0
+    let maxPriceFilter = 0
+    const minPriceFilter = 0
+    let furnishedFilter = ""
+
     const locations = [
-      "klcc",
-      "bukit bintang",
-      "mont kiara",
-      "bangsar",
-      "petaling jaya",
-      "shah alam",
-      "subang jaya",
-      "puchong",
-      "cyberjaya",
-      "putrajaya",
-      "klang",
-      "kajang",
-      "bukit jalil",
-      "cheras",
-      "ampang",
-      "setapak",
-      "kepong",
-      "wangsa maju",
-      "sentul",
-      "titiwangsa",
-      "damansara",
+      "KLCC",
+      "Bukit Bintang",
+      "Mont Kiara",
+      "Petaling Jaya",
+      "Subang Jaya",
+      "Shah Alam",
+      "Cheras",
+      "Ampang",
+      "Setapak",
+      "Kepong",
+      "Wangsa Maju",
+      "Titiwangsa",
+      "Sentul",
+      "Puchong",
+      "Cyberjaya",
+      "Putrajaya",
+      "Klang",
+      "Damansara",
+      "Kajang",
+      "Bangi",
+      "Serdang",
     ]
+
     for (const loc of locations) {
-      if (userQuery.includes(loc)) {
-        location = loc
-          .split(" ")
-          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(" ")
+      if (userQuery.toLowerCase().includes(loc.toLowerCase())) {
+        locationFilter = loc
+        console.log("[v0] Chat API: Detected location:", locationFilter)
         break
       }
     }
 
-    // Bedroom detection
-    const bedroomMatch = userQuery.match(/(\d+)\s*(bedroom|bilik|room)/i)
+    const bedroomMatch = userQuery.match(/(\d+)\s*(bilik|bedroom|room|bed)/i)
     if (bedroomMatch) {
-      bedrooms = Number.parseInt(bedroomMatch[1])
+      bedroomsFilter = Number.parseInt(bedroomMatch[1])
+      console.log("[v0] Chat API: Detected bedrooms:", bedroomsFilter)
     }
 
-    // Price detection
-    const priceMatch = userQuery.match(/(?:rm|ringgit)?\s*(\d+)/i)
-    if (priceMatch) {
-      maxPrice = Number.parseInt(priceMatch[1])
+    const maxPriceMatch = userQuery.match(/(?:bawah|under|below|maksimum|max)\s*(?:RM|rm)?\s*(\d+)/i)
+    if (maxPriceMatch) {
+      maxPriceFilter = Number.parseInt(maxPriceMatch[1])
+      console.log("[v0] Chat API: Detected max price:", maxPriceFilter)
     }
 
-    // Budget keyword
-    if (userQuery.includes("budget") || userQuery.includes("bawah") || userQuery.includes("under")) {
-      if (priceMatch) maxPrice = Number.parseInt(priceMatch[1])
+    if (userQuery.match(/fully furnished|lengkap|berperabot lengkap/i)) {
+      furnishedFilter = "fully"
+    } else if (userQuery.match(/partial|separuh|semi/i)) {
+      furnishedFilter = "partial"
     }
 
-    // Furnished detection
-    if (userQuery.includes("furnished") || userQuery.includes("berperabot") || userQuery.includes("perabot")) {
-      furnished = "full"
-    }
-
-    console.log("[v0] Chat API: Extracted params:", { location, bedrooms, maxPrice, furnished })
-
-    // Build SQL query using tagged template literals
-    let properties: any[] = []
-
-    if (location && bedrooms > 0 && maxPrice > 0 && furnished) {
+    let properties
+    if (locationFilter) {
       properties = await sql`
-        SELECT * FROM properties 
-        WHERE is_available = true 
-        AND location ILIKE ${`%${location}%`}
-        AND bedrooms >= ${bedrooms}
-        AND price <= ${maxPrice}
-        AND furnished = ${furnished}
-        ORDER BY price ASC 
-        LIMIT 5
+        SELECT id, title, title_ms, location, address, price, bedrooms, bathrooms, 
+               size_sqft, furnished, contact_number, description, description_ms, image_url
+        FROM properties
+        WHERE is_available = true
+          AND LOWER(location) LIKE ${`%${locationFilter.toLowerCase()}%`}
+        ORDER BY created_at DESC
+        LIMIT 100
       `
-    } else if (location && bedrooms > 0 && maxPrice > 0) {
-      properties = await sql`
-        SELECT * FROM properties 
-        WHERE is_available = true 
-        AND location ILIKE ${`%${location}%`}
-        AND bedrooms >= ${bedrooms}
-        AND price <= ${maxPrice}
-        ORDER BY price ASC 
-        LIMIT 5
-      `
-    } else if (location && bedrooms > 0) {
-      properties = await sql`
-        SELECT * FROM properties 
-        WHERE is_available = true 
-        AND location ILIKE ${`%${location}%`}
-        AND bedrooms >= ${bedrooms}
-        ORDER BY price ASC 
-        LIMIT 5
-      `
-    } else if (location && maxPrice > 0) {
-      properties = await sql`
-        SELECT * FROM properties 
-        WHERE is_available = true 
-        AND location ILIKE ${`%${location}%`}
-        AND price <= ${maxPrice}
-        ORDER BY price ASC 
-        LIMIT 5
-      `
-    } else if (location) {
-      properties = await sql`
-        SELECT * FROM properties 
-        WHERE is_available = true 
-        AND location ILIKE ${`%${location}%`}
-        ORDER BY price ASC 
-        LIMIT 5
-      `
-    } else if (bedrooms > 0 && maxPrice > 0) {
-      properties = await sql`
-        SELECT * FROM properties 
-        WHERE is_available = true 
-        AND bedrooms >= ${bedrooms}
-        AND price <= ${maxPrice}
-        ORDER BY price ASC 
-        LIMIT 5
-      `
-    } else if (bedrooms > 0) {
-      properties = await sql`
-        SELECT * FROM properties 
-        WHERE is_available = true 
-        AND bedrooms >= ${bedrooms}
-        ORDER BY price ASC 
-        LIMIT 5
-      `
-    } else if (maxPrice > 0) {
-      properties = await sql`
-        SELECT * FROM properties 
-        WHERE is_available = true 
-        AND price <= ${maxPrice}
-        ORDER BY price ASC 
-        LIMIT 5
-      `
-    } else if (furnished) {
-      properties = await sql`
-        SELECT * FROM properties 
-        WHERE is_available = true 
-        AND furnished = ${furnished}
-        ORDER BY price ASC 
-        LIMIT 5
-      `
+      console.log("[v0] Chat API: Fetched", properties.length, "properties from database for location:", locationFilter)
     } else {
-      // No specific filters, return general properties
       properties = await sql`
-        SELECT * FROM properties 
-        WHERE is_available = true 
-        ORDER BY price ASC 
-        LIMIT 5
+        SELECT id, title, title_ms, location, address, price, bedrooms, bathrooms, 
+               size_sqft, furnished, contact_number, description, description_ms, image_url
+        FROM properties
+        WHERE is_available = true
+        ORDER BY created_at DESC
+        LIMIT 100
       `
+      console.log("[v0] Chat API: Fetched", properties.length, "properties from database")
     }
 
-    console.log("[v0] Chat API: Found properties:", properties.length)
+    let filteredProperties = properties
 
-    // Generate response
-    let response = ""
-    let searchUrl = "/search?"
-    const searchParams: string[] = []
+    if (bedroomsFilter > 0) {
+      filteredProperties = filteredProperties.filter((p: any) => p.bedrooms === bedroomsFilter)
+    }
 
-    if (isMalay) {
-      if (properties.length === 0) {
-        response = "Maaf, saya tidak jumpa hartanah yang sesuai dengan keperluan anda. Cuba ubah kriteria carian anda."
-      } else {
-        response = `Saya jumpa ${properties.length} hartanah yang sesuai untuk anda! `
+    if (maxPriceFilter > 0) {
+      filteredProperties = filteredProperties.filter((p: any) => Number.parseFloat(p.price) <= maxPriceFilter)
+    }
 
-        if (location) {
-          response += `di ${location} `
-          searchParams.push(`location=${encodeURIComponent(location)}`)
-        }
-        if (bedrooms > 0) {
-          response += `dengan ${bedrooms} bilik tidur `
-          searchParams.push(`bedrooms=${bedrooms}`)
-        }
-        if (maxPrice > 0) {
-          response += `dalam bajet RM${maxPrice} `
-          searchParams.push(`maxPrice=${maxPrice}`)
-        }
+    if (furnishedFilter) {
+      filteredProperties = filteredProperties.filter((p: any) => p.furnished === furnishedFilter)
+    }
 
-        response += "\n\nBerikut adalah beberapa cadangan:\n\n"
+    console.log("[v0] Chat API: Filtered to", filteredProperties.length, "matching properties")
 
-        properties.slice(0, 3).forEach((prop: any, i: number) => {
-          response += `${i + 1}. **${prop.title_ms || prop.title}**\n`
-          response += `   - Lokasi: ${prop.location}\n`
-          response += `   - Harga: RM${prop.price}/bulan\n`
-          response += `   - Bilik: ${prop.bedrooms} bilik tidur, ${prop.bathrooms} bilik air\n\n`
-        })
+    if (filteredProperties.length === 0) {
+      const noResultsMessage = isMalay
+        ? `Maaf, tiada hartanah di ${locationFilter || "lokasi yang anda cari"} yang sepadan dengan carian anda. Sila cuba dengan kriteria yang berbeza atau lokasi lain.`
+        : `Sorry, no properties in ${locationFilter || "your search location"} match your criteria. Please try different filters or another location.`
+      return NextResponse.json({ message: noResultsMessage })
+    }
 
-        searchUrl += searchParams.join("&")
-        response += `\n[Lihat Semua Hartanah](${searchUrl})`
+    const topProperties = filteredProperties.slice(0, 5)
+
+    const propertyContext = topProperties
+      .map((p: any, index: number) => {
+        const desc = isMalay ? p.description_ms || p.description : p.description
+        return `Property ${index + 1}:
+- Title: ${isMalay ? p.title_ms || p.title : p.title}
+- Location: ${p.location}
+- Price: RM${p.price}
+- Bedrooms: ${p.bedrooms}
+- Size: ${p.size_sqft} sqft
+- Furnished: ${p.furnished}
+- Contact: ${p.contact_number}
+- Description: ${desc?.substring(0, 200)}...
+- Image: ${p.image_url}
+- Map: ${p.address}`
+      })
+      .join("\n\n")
+
+    const enhancedQuery = `${userQuery}\n\nAvailable Properties:\n${propertyContext}`
+
+    console.log(
+      "[v0] Chat API: Enhanced query with property context (first 300 chars):",
+      enhancedQuery.substring(0, 300),
+    )
+
+    const jamaiApiKey = process.env.JAMAI_API_KEY
+    const jamaiProjectId = process.env.JAMAI_PROJECT_ID
+    const jamaiBaseUrl = process.env.JAMAI_BASE_URL || "https://api.jamaibase.com"
+    const jamaiTableIds = process.env.JAMAI_TABLE_IDS || ""
+
+    if (!jamaiApiKey || !jamaiProjectId) {
+      throw new Error("JamAI credentials not configured")
+    }
+
+    const tableIds = jamaiTableIds.split(",").map((id) => id.trim())
+    console.log("[v0] Chat API: Available tables:", tableIds)
+
+    const selectedTable = isMalay
+      ? tableIds.find((id) => id.toLowerCase().includes("malay")) || tableIds[0]
+      : tableIds.find((id) => !id.toLowerCase().includes("malay") && id.toLowerCase().includes("hackathon")) ||
+        tableIds[0]
+
+    console.log("[v0] Chat API: Selected JamAI table:", selectedTable)
+
+    const jamaiResponse = await fetch(`${jamaiBaseUrl}/api/v1/gen_tables/action/rows/add`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${jamaiApiKey}`,
+        "x-project-id": jamaiProjectId,
+      },
+      body: JSON.stringify({
+        table_id: selectedTable,
+        data: [
+          {
+            user_query: enhancedQuery,
+          },
+        ],
+        stream: false,
+      }),
+    })
+
+    console.log("[v0] Chat API: JamAI response status:", jamaiResponse.status)
+
+    if (!jamaiResponse.ok) {
+      const errorText = await jamaiResponse.text()
+      console.error("[v0] Chat API: JamAI error:", errorText)
+
+      if (jamaiResponse.status === 403) {
+        return buildDatabaseResponse(topProperties, isMalay, locationFilter)
       }
-    } else {
-      if (properties.length === 0) {
-        response =
-          "Sorry, I couldn't find any properties matching your requirements. Try adjusting your search criteria."
-      } else {
-        response = `I found ${properties.length} properties that match your needs! `
 
-        if (location) {
-          response += `in ${location} `
-          searchParams.push(`location=${encodeURIComponent(location)}`)
+      throw new Error(`JamAI API error: ${jamaiResponse.status} - ${errorText}`)
+    }
+
+    const jamaiData = await jamaiResponse.json()
+    console.log("[v0] Chat API: JamAI data received:", JSON.stringify(jamaiData).substring(0, 200))
+
+    let aiResponse = ""
+
+    if (jamaiData.rows && jamaiData.rows.length > 0) {
+      const row = jamaiData.rows[0]
+      const columns = row.columns || {}
+
+      console.log("[v0] Chat API: Available columns:", Object.keys(columns))
+
+      const possibleOutputColumns = [
+        "ai_response",
+        "suggestion",
+        "response",
+        "output",
+        "answer",
+        "Cadangan Bilik",
+        "Cadangan",
+        "Respons",
+      ]
+
+      for (const colName of possibleOutputColumns) {
+        if (columns[colName]) {
+          if (columns[colName].value) {
+            aiResponse = columns[colName].value
+            break
+          }
+
+          if (columns[colName].text) {
+            aiResponse = columns[colName].text
+            break
+          }
+
+          if (
+            columns[colName].choices &&
+            Array.isArray(columns[colName].choices) &&
+            columns[colName].choices.length > 0
+          ) {
+            const choice = columns[colName].choices[0]
+            if (choice.message && choice.message.content) {
+              aiResponse = choice.message.content
+              break
+            }
+          }
         }
-        if (bedrooms > 0) {
-          response += `with ${bedrooms} bedrooms `
-          searchParams.push(`bedrooms=${bedrooms}`)
-        }
-        if (maxPrice > 0) {
-          response += `under RM${maxPrice} `
-          searchParams.push(`maxPrice=${maxPrice}`)
-        }
-
-        response += "\n\nHere are some recommendations:\n\n"
-
-        properties.slice(0, 3).forEach((prop: any, i: number) => {
-          response += `${i + 1}. **${prop.title}**\n`
-          response += `   - Location: ${prop.location}\n`
-          response += `   - Price: RM${prop.price}/month\n`
-          response += `   - Rooms: ${prop.bedrooms} bedrooms, ${prop.bathrooms} bathrooms\n\n`
-        })
-
-        searchUrl += searchParams.join("&")
-        response += `\n[View All Properties](${searchUrl})`
       }
     }
 
-    console.log("[v0] Chat API: Generated response:", response)
+    if (!aiResponse) {
+      console.log("[v0] Chat API: No JamAI response, using database fallback")
+      return buildDatabaseResponse(topProperties, isMalay, locationFilter)
+    }
 
-    return NextResponse.json({ message: response })
+    console.log("[v0] Chat API: Raw AI response:", aiResponse.substring(0, 200))
+
+    const finalResponse = buildDatabaseResponse(topProperties, isMalay, locationFilter)
+    return finalResponse
   } catch (error: any) {
     console.error("[v0] Chat API: Error:", error)
 
     return NextResponse.json(
       {
-        message: "Maaf, terdapat masalah teknikal. / Sorry, I encountered a technical error. Please try again.",
+        message: "Maaf, terdapat masalah teknikal. / Sorry, I encountered a technical error. Please try again later.",
         error: error.message,
       },
       { status: 500 },
     )
   }
+}
+
+function buildDatabaseResponse(properties: any[], isMalay: boolean, locationFilter: string) {
+  if (properties.length === 0) {
+    const noResultsMessage = isMalay
+      ? `Maaf, tiada hartanah di ${locationFilter || "lokasi yang anda cari"} yang sepadan dengan carian anda. Sila cuba dengan kriteria yang berbeza.`
+      : `Sorry, no properties in ${locationFilter || "your search location"} match your search criteria. Please try different filters.`
+    return NextResponse.json({ message: noResultsMessage })
+  }
+
+  const greeting = isMalay
+    ? `Saya jumpa ${properties.length} hartanah di ${locationFilter} yang sesuai untuk anda:\n\n`
+    : `I found ${properties.length} properties in ${locationFilter} that match your search:\n\n`
+
+  const propertyList = properties
+    .map((p: any, index: number) => {
+      const title = isMalay ? p.title_ms || p.title : p.title
+      const desc = isMalay ? p.description_ms || p.description : p.description
+
+      return `**${index + 1}. ${title}**
+📍 Lokasi: ${p.location}
+💰 Harga: RM${p.price}/bulan
+🛏️ Bilik Tidur: ${p.bedrooms}
+📐 Saiz: ${p.size_sqft} kps
+🪑 Perabot: ${p.furnished === "fully" ? "Lengkap" : p.furnished === "partial" ? "Separuh" : "Tanpa"}
+📞 Hubungi: ${p.contact_number}
+
+${desc?.substring(0, 150)}...
+
+🖼️ [Lihat Gambar](${p.image_url})
+🗺️ [Lihat Peta](${p.address})
+
+[Lihat Hartanah](/search?title=${encodeURIComponent(p.title)})`
+    })
+    .join("\n\n---\n\n")
+
+  return NextResponse.json({ message: greeting + propertyList })
 }
