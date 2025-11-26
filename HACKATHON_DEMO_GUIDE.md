@@ -197,7 +197,7 @@ If judges want to test:
 ## 📊 Impact Metrics
 
 - **Database**: 100 verified properties
-- **Locations**: 13 areas in Klang Valley
+- **Locations**: 20 areas in Klang Valley
 - **Languages**: 2 (English, Bahasa Melayu)
 - **Price Range**: RM500 - RM8,000/month
 - **Property Types**: Studio to 5-bedroom units
